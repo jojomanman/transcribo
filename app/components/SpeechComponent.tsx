@@ -6,7 +6,8 @@ import { createClient, LiveClient, LiveTranscriptionEvents } from "@deepgram/sdk
 const SpeechComponent = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState<string>("");
+  const [finalTranscript, setFinalTranscript] = useState<string>("");
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   // const [connection, setConnection] = useState<LiveClient | null>(null); // Replaced by useRef
   const connectionRef = useRef<LiveClient | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -117,11 +118,21 @@ const SpeechComponent = () => {
     liveConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
       console.log("Deepgram Transcript received:", JSON.stringify(data, null, 2));
       const text = data.channel.alternatives[0].transcript;
-      if (text) {
-        console.log(`Transcript text: "${text}", is_final: ${data.is_final}`);
-        setTranscript((prev) => prev + (data.is_final ? text + " " : text));
+
+      if (data.is_final && text.trim()) {
+        console.log(`Final transcript text: "${text}"`);
+        setFinalTranscript((prev) => prev + text + " ");
+        setInterimTranscript(""); // Clear interim when final arrives
+      } else if (!data.is_final && text.trim()) {
+        console.log(`Interim transcript text: "${text}"`);
+        setInterimTranscript(text);
       } else {
-        console.log("Received transcript data, but no text found in alternatives[0].transcript");
+        // Potentially clear interim if text is empty but not final, or handle as needed
+        if (!data.is_final && text === "") {
+            // This can happen if Deepgram sends an empty interim result before speech_final
+            // setInterimTranscript(""); // Optionally clear if you want interim to disappear on silence
+        }
+        console.log("Received transcript data, but no significant text found or it's an empty final.");
       }
     });
 
@@ -208,7 +219,10 @@ const SpeechComponent = () => {
       <p>Status: {isListening ? "Listening..." : "Not Listening"}</p>
       {apiKey ? <p style={{color: "green"}}>API Key Loaded</p> : <p style={{color: "red"}}>API Key NOT Loaded - Check .env.local and server console.</p>}
       <h3>Transcript:</h3>
-      <p>{transcript}</p>
+      <p>
+        {finalTranscript}
+        <span style={{ color: "gray" }}>{interimTranscript}</span>
+      </p>
     </div>
   );
 };
