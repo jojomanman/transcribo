@@ -61,8 +61,13 @@ const SpeechComponent = () => {
       const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
       
       recorder.ondataavailable = (event) => {
+        // Add log here to confirm data is available
+        console.log(`recorder.ondataavailable: data size ${event.data.size}`);
         if (event.data.size > 0 && connectionRef.current?.getReadyState() === 1) {
+          console.log("recorder.ondataavailable: Sending data to Deepgram");
           connectionRef.current.send(event.data);
+        } else if (event.data.size > 0) {
+           console.warn(`recorder.ondataavailable: Connection not ready (state: ${connectionRef.current?.getReadyState()}), not sending data.`);
         }
       };
       
@@ -119,7 +124,11 @@ const SpeechComponent = () => {
       setIsListening(true);
     });
 
+    // Add log before attaching listener
+    console.log("Attaching Transcript event listener...");
     liveConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
+      // Add log inside the callback
+      console.log(">>> Transcript EVENT RECEIVED:", data);
       const { is_final: isFinal, speech_final: speechFinal, channel } = data;
       const alternative = channel.alternatives[0];
       const currentTranscript = alternative.transcript;
