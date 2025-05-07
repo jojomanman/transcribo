@@ -247,8 +247,8 @@ const SpeechComponent = () => {
       mediaRecorder?.stream?.getTracks().forEach(track => track.stop());
       console.log("Cleanup complete.");
     };
-  // Correct dependency array for cleanup effect
-  }, [mediaRecorder]); 
+  // Correct dependency array for cleanup effect - should only run on unmount
+  }, []);
 
 
   // Render the UI
