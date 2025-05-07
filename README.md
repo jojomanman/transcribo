@@ -16,7 +16,7 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
     *   Microphone access (`navigator.mediaDevices.getUserMedia`, `MediaRecorder`).
     *   Connection to Deepgram's live transcription service.
     *   Sending audio data and receiving/displaying transcripts.
-*   `app/api/deepgram-key/route.ts`: A simple Next.js API route that serves the `DEEPGRAM_API_KEY` from environment variables.
+*   `app/api/deepgram-key/route.ts`: A Next.js API route that securely generates a **short-lived, temporary Deepgram API key** for the client. It uses the main `DEEPGRAM_API_KEY` (stored as an environment variable on the server) to create this temporary key.
 *   `app/page.tsx`: The main page that renders the `SpeechComponent`.
 *   `app/layout.tsx`: The root layout for the Next.js application.
 *   `.env.local.example`: Template for setting up the required environment variable.
@@ -49,10 +49,14 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 
 ## Important Notes for Developers
 
-*   **API Key Management:**
-    *   The `DEEPGRAM_API_KEY` is crucial for authenticating with Deepgram.
-    *   It's fetched client-side via the `/api/deepgram-key` route, which reads `process.env.DEEPGRAM_API_KEY` on the server.
-    *   **Never commit your actual `.env.local` file or API key directly into your repository.** The [`.gitignore`](c:\Users\jonas\Desktop\minimal-speech-to-text\.gitignore:1) file is configured to prevent this.
+*   **API Key Management (Secure Approach):**
+    *   The main `DEEPGRAM_API_KEY` (your powerful, primary key) is stored as an environment variable on the server (e.g., in Vercel settings or your local `.env.local` file). **This main key is never sent to the client.**
+    *   The client-side `SpeechComponent.tsx` calls the `/api/deepgram-key` API route.
+    *   This server-side API route ([`app/api/deepgram-key/route.ts`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\api\deepgram-key\route.ts:1)) uses the main `DEEPGRAM_API_KEY` to initialize a Deepgram SDK client *on the server*.
+    *   It then uses this server-side client to call Deepgram's API (`deepgram.keys.create()`) to generate a **new, short-lived, temporary API key**. This temporary key has a limited Time-To-Live (TTL, e.g., 10 minutes) and is scoped with general "member" permissions suitable for transcription.
+    *   Only this **temporary key** is sent back to the client. The client uses this temporary key to connect to Deepgram for the transcription session.
+    *   This approach significantly enhances security by preventing your main API key from ever being exposed in the browser.
+    *   **Never commit your actual `.env.local` file or main API key directly into your repository.** The [`.gitignore`](c:\Users\jonas\Desktop\minimal-speech-to-text\.gitignore:1) file is configured to prevent this.
 *   **Microphone Permissions:**
     *   The application requests microphone access from the user via the browser. Ensure permissions are granted.
     *   Error handling for permission denial is basic (an `alert` and console error).
