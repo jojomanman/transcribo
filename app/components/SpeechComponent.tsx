@@ -17,8 +17,9 @@ const SpeechComponent = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   
-  const [finalTranscript, setFinalTranscript] = useState<Array<WordElement | string>>([]);
-  const [interimTranscript, setInterimTranscript] = useState<Array<WordElement> | string>("");
+  // Revert transcript states to simple strings for debugging
+  const [finalTranscript, setFinalTranscript] = useState<string>("");
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   
   const connectionRef = useRef<LiveClient | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -126,45 +127,35 @@ const SpeechComponent = () => {
 
     // Add log before attaching listener
     console.log("Attaching Transcript event listener...");
+    // Add log before attaching listener
+    console.log("Attaching Transcript event listener...");
+    // Add log before attaching listener
+    console.log("Attaching Transcript event listener...");
     liveConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
-      // Add log inside the callback
       console.log(">>> Transcript EVENT RECEIVED:", data);
       const { is_final: isFinal, speech_final: speechFinal, channel } = data;
-      const alternative = channel.alternatives[0];
-      const currentTranscript = alternative.transcript;
-
-      // Use 'any' for wordData type
-      if (settings.highlightConfidence && alternative.words && alternative.words.length > 0) {
-        const wordsWithColor: WordElement[] = alternative.words.map((wordData: any) => { 
-          const wordConfidence = wordData.confidence;
-          let color = "text-gray-500"; 
-          if (wordConfidence < 0.3) color = "text-red-500";
-          else if (wordConfidence < 0.5) color = "text-red-400";
-          else if (wordConfidence < 0.65) color = "text-yellow-500";
-          else if (wordConfidence < 0.8) color = "text-yellow-400";
-          else if (wordConfidence < 0.9) color = "text-green-400";
-          else color = "text-green-500";
-          return { word: wordData.punctuated_word || wordData.word, color, confidence: wordConfidence };
-        });
-
-        if (isFinal && currentTranscript.trim()) {
-          setFinalTranscript(prev => [...prev, ...wordsWithColor, " "]);
-          setInterimTranscript("");
-        } else if (!isFinal) {
-          setInterimTranscript(wordsWithColor);
-        }
-      } else { 
-        if (isFinal && currentTranscript.trim()) {
-          setFinalTranscript(prev => [...prev, currentTranscript, " "]);
-          setInterimTranscript("");
-        } else if (!isFinal) {
-          setInterimTranscript(currentTranscript);
-        }
+      
+      if (!channel || !channel.alternatives || channel.alternatives.length === 0) {
+        console.warn("Received transcript data without alternatives.");
+        return;
       }
       
-      if (isFinal && speechFinal) {
-        setTimeout(() => setInterimTranscript(""), 500); 
+      const alternative = channel.alternatives[0];
+      const currentTranscript = alternative.transcript || "";
+
+      // Simplified state update logic (no highlighting)
+      if (isFinal && currentTranscript.trim()) {
+        // Use functional update for final transcript to ensure correct appending
+        setFinalTranscript(prev => prev + currentTranscript + " ");
+        setInterimTranscript(""); // Clear interim
+      } else if (!isFinal) {
+        setInterimTranscript(currentTranscript); // Set interim
       }
+      
+      // Optional: Clear interim specifically when speech is final (end of utterance)
+      // if (isFinal && speechFinal) {
+      //    setTimeout(() => setInterimTranscript(""), 50);
+      // }
     });
 
     // Corrected Close handler (removed duplicate)
@@ -219,10 +210,11 @@ const SpeechComponent = () => {
       setIsListening(false); 
     } else {
       console.log("Starting listening...");
-      setFinalTranscript([]);
+      // Reset simple string states
+      setFinalTranscript("");
       setInterimTranscript("");
       
-      let recorderToUse = mediaRecorder; 
+      let recorderToUse = mediaRecorder;
       if (!recorderToUse) {
         recorderToUse = await setupMicrophone(); 
         if (!recorderToUse) { // Check if setup succeeded (returns null on failure)
@@ -309,16 +301,9 @@ const SpeechComponent = () => {
       <div className="prose max-w-none p-4 border rounded-lg bg-gray-50 min-h-[100px]">
         <h3 className="text-lg font-semibold mb-2">Transcript:</h3>
         <p>
-          {finalTranscript.map((item, index) => 
-            typeof item === "string" ? <span key={`final-str-${index}`}>{item}</span> : 
-            <span key={`final-word-${index}`} className={item.color}>{item.word} </span>
-          )}
-          {typeof interimTranscript === "string" ? 
-            <span className="text-gray-500">{interimTranscript}</span> : 
-            interimTranscript.map((item, index) => 
-              <span key={`interim-${index}`} className={`${item.color} opacity-75`}>{item.word} </span>
-            )
-          }
+          {/* Render simple string states */}
+          {finalTranscript}
+          <span className="text-gray-500">{interimTranscript}</span>
         </p>
       </div>
     </div>
