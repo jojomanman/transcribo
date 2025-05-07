@@ -1,0 +1,77 @@
+# Minimal Next.js Deepgram Speech-to-Text
+
+A minimal implementation of live speech-to-text functionality using Next.js, TypeScript, and the Deepgram SDK. This project serves as a basic example of capturing microphone audio in the browser and streaming it to Deepgram for live transcription.
+
+## Key Features
+
+*   Live audio transcription from the browser microphone.
+*   Uses Deepgram's Nova-3 model by default.
+*   Client-side fetching of the Deepgram API key via a simple server-side API route.
+*   Basic UI to start/stop listening and display transcripts.
+
+## Project Structure
+
+*   `app/components/SpeechComponent.tsx`: The core client component handling:
+    *   Microphone access (`navigator.mediaDevices.getUserMedia`, `MediaRecorder`).
+    *   Connection to Deepgram's live transcription service.
+    *   Sending audio data and receiving/displaying transcripts.
+*   `app/api/deepgram-key/route.ts`: A simple Next.js API route that serves the `DEEPGRAM_API_KEY` from environment variables.
+*   `app/page.tsx`: The main page that renders the `SpeechComponent`.
+*   `app/layout.tsx`: The root layout for the Next.js application.
+*   `.env.local.example`: Template for setting up the required environment variable.
+
+## Setup and Running Locally
+
+1.  **Clone the repository (if you haven't already):**
+    ```bash
+    git clone https://github.com/jojomanman/transcribo.git
+    cd transcribo # Or your chosen directory name
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+3.  **Set up your Deepgram API Key:**
+    *   Copy the [`.env.local.example`](c:\Users\jonas\Desktop\minimal-speech-to-text\.env.local.example:1) file to a new file named `.env.local` in the project root.
+    *   Open `.env.local` and replace `YOUR_DEEPGRAM_API_KEY` with your actual Deepgram API key.
+    ```
+    DEEPGRAM_API_KEY=YOUR_DEEPGRAM_API_KEY
+    ```
+
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+    The application will typically be available at `http://localhost:3000`.
+
+## Important Notes for Developers
+
+*   **API Key Management:**
+    *   The `DEEPGRAM_API_KEY` is crucial for authenticating with Deepgram.
+    *   It's fetched client-side via the `/api/deepgram-key` route, which reads `process.env.DEEPGRAM_API_KEY` on the server.
+    *   **Never commit your actual `.env.local` file or API key directly into your repository.** The [`.gitignore`](c:\Users\jonas\Desktop\minimal-speech-to-text\.gitignore:1) file is configured to prevent this.
+*   **Microphone Permissions:**
+    *   The application requests microphone access from the user via the browser. Ensure permissions are granted.
+    *   Error handling for permission denial is basic (an `alert` and console error).
+*   **Deepgram Connection (`LiveClient`) Management:**
+    *   The Deepgram `LiveClient` instance is stored in a `useRef` (`connectionRef`) within [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1).
+    *   This is important because the `MediaRecorder.ondataavailable` callback needs a stable reference to the current connection object to send audio data. Using `useState` directly for the connection object can lead to the callback capturing a stale closure if not handled carefully.
+*   **Audio Capture & Encoding:**
+    *   `MediaRecorder` is used to capture audio.
+    *   The `mimeType` is set to `audio/webm;codecs=opus`, which is generally well-supported and works effectively with Deepgram.
+*   **Deepgram Connection Options:**
+    *   The options passed to `deepgram.listen.live()` in [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) (e.g., `model`, `interim_results`, `smart_format`, `filler_words`, `utterance_end_ms`) are based on the settings from the original, more complex application this was derived from. These provide a good starting point for real-time transcription.
+    *   During debugging, it was observed that even when `channels: 1` was explicitly set, Deepgram's response sometimes indicated `channel_index: [0, 1]`. The current configuration (without explicitly setting `channels`) relies on Deepgram or the SDK to correctly interpret the mono Opus stream.
+
+## Deployment (Example: Vercel)
+
+1.  Push your code to a GitHub repository.
+2.  Import the project into Vercel from your GitHub repository.
+3.  Vercel should automatically detect it as a Next.js project.
+4.  **Crucially, set the `DEEPGRAM_API_KEY` as an environment variable in your Vercel project settings.**
+5.  Deploy. Vercel will provide a public URL for your application.
+6.  Test on a device with a microphone (e.g., your mobile phone).
+
+This minimal version provides a foundational understanding of integrating Deepgram's live transcription into a Next.js application.
