@@ -7,7 +7,8 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 *   Live audio transcription from the browser microphone.
 *   Uses Deepgram's Nova-3 model by default.
 *   Client-side fetching of the Deepgram API key via a simple server-side API route.
-*   Basic UI to start/stop listening and display transcripts.
+*   Basic UI to start/stop listening.
+*   Differentiated display for interim (real-time, lighter font) and final (confirmed) transcripts.
 
 ## Project Structure
 
@@ -64,6 +65,12 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 *   **Deepgram Connection Options:**
     *   The options passed to `deepgram.listen.live()` in [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) (e.g., `model`, `interim_results`, `smart_format`, `filler_words`, `utterance_end_ms`) are based on the settings from the original, more complex application this was derived from. These provide a good starting point for real-time transcription.
     *   During debugging, it was observed that even when `channels: 1` was explicitly set, Deepgram's response sometimes indicated `channel_index: [0, 1]`. The current configuration (without explicitly setting `channels`) relies on Deepgram or the SDK to correctly interpret the mono Opus stream.
+*   **Transcript Display:**
+    *   The component now manages separate states for `finalTranscript` and `interimTranscript`.
+    *   Interim results are displayed in a lighter color (gray) and are replaced as new interim results arrive.
+    *   Final results are appended to the `finalTranscript` string and displayed in the default color.
+*   **Code Readability:**
+    *   Comments have been added to [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) to explain state variables, function purposes, and key logic sections.
 
 ## Deployment (Example: Vercel)
 
