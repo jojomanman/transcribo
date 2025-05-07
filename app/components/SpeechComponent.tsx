@@ -26,9 +26,9 @@ const SpeechComponent = () => {
     fetch("/api/deepgram-key")
       .then((res) => res.json())
       .then((data) => {
-        if (data.apiKey) {
+        if (data.key) {
           console.log("API Key fetched successfully.");
-          setApiKey(data.apiKey);
+          setApiKey(data.key);
         } else {
           console.error("Failed to get API key:", data.error);
           alert("Error: DEEPGRAM_API_KEY not configured on the server. Please check your .env.local file.");
