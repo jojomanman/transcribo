@@ -94,8 +94,9 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
   );
 
   const renderMobileControls = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-background/80 dark:bg-background/90 backdrop-blur-sm border-t border-border/60 p-3 shadow-lg rounded-t-xl">
-      <div className="flex items-center justify-between space-x-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-background/80 dark:bg-background/90 backdrop-blur-sm border-t border-border/60 p-2 shadow-lg rounded-t-xl h-14"> {/* Padding p-2, Height h-14 (56px) */}
+      <div className="flex items-center justify-between space-x-2 h-full"> {/* Inner flex container takes full height */}
+        {/* Left side: Model Select and Diarization Checkbox */}
         <div className="flex items-center space-x-2 flex-grow-[3] min-w-0">
           <div className="flex-grow min-w-0">
             <Select
@@ -103,7 +104,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
               onValueChange={setSelectedOptionKey}
               disabled={isListening || apiKeyStatus !== 'loaded'}
             >
-              <SelectTrigger id="transcription-option-select-mobile" className="w-full bg-background text-xs h-10 truncate">
+              <SelectTrigger id="transcription-option-select-mobile" className="w-full bg-background text-xs h-9 truncate"> {/* Height h-9 */}
                 <SelectValue placeholder="Model & Lang." />
               </SelectTrigger>
               <SelectContent>
@@ -128,11 +129,12 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
           </div>
         </div>
 
+        {/* Right side: Mic Button */}
         <div className="flex-grow-[1] min-w-[70px] flex justify-end">
           <Button
             onClick={toggleListening}
             disabled={apiKeyStatus !== 'loaded'}
-            className="h-10 w-full max-w-[100px] transition-all duration-150 ease-in-out aspect-square p-0"
+            className="h-9 w-full max-w-[100px] transition-all duration-150 ease-in-out aspect-square p-0"
             variant={isListening ? "destructive" : "default"}
             size="icon"
           >
@@ -145,7 +147,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
   );
 
   return (
-    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-[calc(100%-76px)] pb-[76px]'}`}>
+    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-[calc(100%-56px)] pb-14'}`}> {/* Adjusted for explicit h-14 (56px) bar */}
       {userMessage && (
         <div className={`p-3 rounded-md text-sm flex items-center space-x-2 mb-2 mx-2 ${
           userMessage.type === 'error' ? 'bg-red-100 dark:bg-red-900/70 text-red-700 dark:text-red-200' :
