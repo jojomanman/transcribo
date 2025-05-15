@@ -5,10 +5,15 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 ## Key Features
 
 *   Live audio transcription from the browser microphone.
-*   Uses Deepgram's Nova-3 model by default.
+*   Selectable transcription settings via a single dropdown:
+    *   **Models:** Nova-3 and Nova-2.
+    *   **Languages:** Includes English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian, Dutch for Nova-3 (using `multi` for non-English). Extensive language list for Nova-2.
+    *   **Filler Words:** Option for English with Nova-3 and Nova-2.
+*   Toggle for **Speaker Diarization** (all languages).
+*   Visual feedback for **word-level confidence scores** (background color).
 *   Client-side fetching of the Deepgram API key via a simple server-side API route.
-*   Basic UI to start/stop listening.
-*   Differentiated display for interim (real-time, lighter font) and final (confirmed) transcripts.
+*   Basic UI to start/stop listening and configure options.
+*   Differentiated display for interim (real-time, lighter font) and final (confirmed) transcripts, including speaker labels when diarization is active.
 
 ## Project Structure
 
@@ -67,16 +72,21 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
     *   `MediaRecorder` is used to capture audio.
     *   The `mimeType` is set to `audio/webm;codecs=opus`, which is generally well-supported and works effectively with Deepgram.
 *   **Deepgram Connection Options:**
-    *   The options passed to `deepgram.listen.live()` in [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) (e.g., `model`, `interim_results`, `smart_format`, `filler_words`, `utterance_end_ms`) are based on the settings from the original, more complex application this was derived from. These provide a good starting point for real-time transcription.
-    *   During debugging, it was observed that even when `channels: 1` was explicitly set, Deepgram's response sometimes indicated `channel_index: [0, 1]`. The current configuration (without explicitly setting `channels`) relies on Deepgram or the SDK to correctly interpret the mono Opus stream.
+    *   The application now provides a consolidated dropdown in [`app/components/SpeechComponent.tsx`](transcribo/app/components/SpeechComponent.tsx:0) to select transcription settings, including:
+        *   **Model:** Nova-3 or Nova-2.
+        *   **Language:** A comprehensive list of languages. For Nova-3, non-English selections utilize the `multi` language code for auto-detection among supported languages (English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian, Dutch). Nova-2 uses specific language codes.
+        *   **Filler Words:** This option is bundled with English selections for both Nova-3 and Nova-2.
+    *   A separate toggle allows enabling/disabling **Speaker Diarization** (`diarize: true/false`).
+    *   Other parameters like `interim_results: true`, `smart_format: true`, and `utterance_end_ms: 3000` are maintained for real-time transcription.
 *   **Transcript Display:**
-    *   The component now manages separate states for `finalTranscript` and `interimTranscript`.
+    *   The component displays words with a background color indicating their confidence score (green for high, yellow for medium, red for low).
+    *   If Speaker Diarization is enabled, the transcript will show speaker labels (e.g., "Speaker 0:", "Speaker 1:") before the corresponding speech segments.
     *   Interim results are displayed in a lighter color (gray) and are replaced as new interim results arrive.
-    *   Final results are appended to the `finalTranscript` string and displayed in the default color.
+    *   Final results are accumulated and displayed.
 *   **Code Readability:**
-    *   Comments have been added to [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) to explain state variables, function purposes, and key logic sections.
+    *   Comments have been added to [`app/components/SpeechComponent.tsx`](transcribo/app/components/SpeechComponent.tsx:0) to explain state variables, function purposes, and key logic sections.
 
-*   **Deepgram API Reference:** For a comprehensive reference of the Deepgram API, including all available query parameters, response structures, and features discussed in this project, please see the [Deepgram API Documentation](../deepgram_api.md).
+*   **Deepgram API Reference:** For a comprehensive reference of the Deepgram API, including all available query parameters (like `model`, `language`, `filler_words`, `diarize`), response structures, and features discussed in this project, please see the [Deepgram API Documentation](../deepgram_api.md).
 ## Deployment (Example: Vercel)
 
 1.  Push your code to a GitHub repository.
