@@ -94,17 +94,17 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
   );
 
   const renderMobileControls = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-background/80 dark:bg-background/90 backdrop-blur-sm border-t border-border/60 p-2 shadow-lg rounded-t-xl h-14"> {/* Padding p-2, Height h-14 (56px) */}
-      <div className="flex items-center justify-between space-x-2 h-full"> {/* Inner flex container takes full height */}
-        {/* Left side: Model Select and Diarization Checkbox */}
-        <div className="flex items-center space-x-2 flex-grow-[3] min-w-0">
-          <div className="flex-grow min-w-0">
+    <div className="fixed bottom-0 left-0 right-0 bg-background/80 dark:bg-background/80 backdrop-blur-sm border-t border-border/60 p-2 shadow-lg rounded-t-xl h-auto min-h-14"> {/* Opacity 80%, h-auto for content, min-h-14 */}
+      <div className="flex items-center justify-between space-x-2 h-full">
+        {/* Left side: Model Select and Diarization Checkbox (stacked) */}
+        <div className="flex flex-col space-y-1 flex-grow-[3] min-w-0"> {/* Changed to flex-col and space-y-1 */}
+          <div className="w-full"> {/* Ensure Select takes full width of its column part */}
             <Select
               value={selectedOptionKey}
               onValueChange={setSelectedOptionKey}
               disabled={isListening || apiKeyStatus !== 'loaded'}
             >
-              <SelectTrigger id="transcription-option-select-mobile" className="w-full bg-background text-xs h-9 truncate"> {/* Height h-9 */}
+              <SelectTrigger id="transcription-option-select-mobile" className="w-full bg-background text-xs h-9 truncate">
                 <SelectValue placeholder="Model & Lang." />
               </SelectTrigger>
               <SelectContent>
@@ -116,7 +116,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center space-x-1.5 shrink-0">
+          <div className="flex items-center space-x-1.5 self-start pt-0.5"> {/* Moved diarization under, self-start for alignment */}
             <Checkbox
               id="diarization-toggle-mobile"
               checked={enableDiarization}
@@ -124,13 +124,13 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
               disabled={isListening || apiKeyStatus !== 'loaded'}
             />
             <Label htmlFor="diarization-toggle-mobile" className="text-xs text-muted-foreground cursor-pointer">
-              Spkrs
+              Enable Speaker Diarization
             </Label>
           </div>
         </div>
 
-        {/* Right side: Mic Button */}
-        <div className="flex-grow-[1] min-w-[70px] flex justify-end">
+        {/* Right side: Mic Button (aligned to center of the potentially taller left column) */}
+        <div className="flex-grow-[1] min-w-[70px] flex items-center justify-end"> {/* Added items-center for vertical alignment */}
           <Button
             onClick={toggleListening}
             disabled={apiKeyStatus !== 'loaded'}
