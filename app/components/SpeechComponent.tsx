@@ -29,6 +29,62 @@ const SpeechComponent: FC = () => {
     confidence: number;
     speaker?: number; // Added for diarization
   }
+
+  // Interface for combined transcription options
+  interface TranscriptionOption {
+    key: string;
+    label: string;
+    model: string;
+    language: string;
+    filler_words: boolean;
+  }
+
+  // Define all transcription options
+  const transcriptionOptions: TranscriptionOption[] = [
+    { key: "nova3-en-fw", label: "English (Nova-3) + Filler Words", model: "nova-3", language: "en", filler_words: true },
+    { key: "nova3-en", label: "English (Nova-3)", model: "nova-3", language: "en", filler_words: false },
+    { key: "nova3-multi", label: "Multilingual (Nova-3) (EN,ES,FR,DE,IT,PT,NL,HI,JA,RU)", model: "nova-3", language: "multi", filler_words: false },
+    // Nova-2 Languages (filler_words: false for all non-English)
+    { key: "nova2-bg", label: "Bulgarian (Nova-2)", model: "nova-2", language: "bg", filler_words: false },
+    { key: "nova2-ca", label: "Catalan (Nova-2)", model: "nova-2", language: "ca", filler_words: false },
+    { key: "nova2-zh", label: "Chinese (Mandarin, Simplified) (Nova-2)", model: "nova-2", language: "zh", filler_words: false },
+    { key: "nova2-zh-TW", label: "Chinese (Mandarin, Traditional) (Nova-2)", model: "nova-2", language: "zh-TW", filler_words: false },
+    { key: "nova2-zh-HK", label: "Chinese (Cantonese, Traditional) (Nova-2)", model: "nova-2", language: "zh-HK", filler_words: false },
+    { key: "nova2-cs", label: "Czech (Nova-2)", model: "nova-2", language: "cs", filler_words: false },
+    { key: "nova2-da", label: "Danish (Nova-2)", model: "nova-2", language: "da", filler_words: false },
+    { key: "nova2-nl", label: "Dutch (Nova-2)", model: "nova-2", language: "nl", filler_words: false },
+    { key: "nova2-en", label: "English (Nova-2)", model: "nova-2", language: "en", filler_words: false }, // Nova-2 English without filler words by default in this list
+    { key: "nova2-en-fw", label: "English (Nova-2) + Filler Words", model: "nova-2", language: "en", filler_words: true },
+    { key: "nova2-et", label: "Estonian (Nova-2)", model: "nova-2", language: "et", filler_words: false },
+    { key: "nova2-fi", label: "Finnish (Nova-2)", model: "nova-2", language: "fi", filler_words: false },
+    { key: "nova2-nl-BE", label: "Flemish (Nova-2)", model: "nova-2", language: "nl-BE", filler_words: false },
+    { key: "nova2-fr", label: "French (Nova-2)", model: "nova-2", language: "fr", filler_words: false },
+    { key: "nova2-de", label: "German (Nova-2)", model: "nova-2", language: "de", filler_words: false },
+    { key: "nova2-de-CH", label: "German (Switzerland) (Nova-2)", model: "nova-2", language: "de-CH", filler_words: false },
+    { key: "nova2-el", label: "Greek (Nova-2)", model: "nova-2", language: "el", filler_words: false },
+    { key: "nova2-hi", label: "Hindi (Nova-2)", model: "nova-2", language: "hi", filler_words: false },
+    { key: "nova2-hu", label: "Hungarian (Nova-2)", model: "nova-2", language: "hu", filler_words: false },
+    { key: "nova2-id", label: "Indonesian (Nova-2)", model: "nova-2", language: "id", filler_words: false },
+    { key: "nova2-it", label: "Italian (Nova-2)", model: "nova-2", language: "it", filler_words: false },
+    { key: "nova2-ja", label: "Japanese (Nova-2)", model: "nova-2", language: "ja", filler_words: false },
+    { key: "nova2-ko", label: "Korean (Nova-2)", model: "nova-2", language: "ko", filler_words: false },
+    { key: "nova2-lv", label: "Latvian (Nova-2)", model: "nova-2", language: "lv", filler_words: false },
+    { key: "nova2-lt", label: "Lithuanian (Nova-2)", model: "nova-2", language: "lt", filler_words: false },
+    { key: "nova2-ms", label: "Malay (Nova-2)", model: "nova-2", language: "ms", filler_words: false },
+    { key: "nova2-no", label: "Norwegian (Nova-2)", model: "nova-2", language: "no", filler_words: false },
+    { key: "nova2-pl", label: "Polish (Nova-2)", model: "nova-2", language: "pl", filler_words: false },
+    { key: "nova2-pt", label: "Portuguese (Nova-2)", model: "nova-2", language: "pt", filler_words: false },
+    { key: "nova2-ro", label: "Romanian (Nova-2)", model: "nova-2", language: "ro", filler_words: false },
+    { key: "nova2-ru", label: "Russian (Nova-2)", model: "nova-2", language: "ru", filler_words: false },
+    { key: "nova2-sk", label: "Slovak (Nova-2)", model: "nova-2", language: "sk", filler_words: false },
+    { key: "nova2-es", label: "Spanish (Nova-2)", model: "nova-2", language: "es", filler_words: false },
+    { key: "nova2-sv", label: "Swedish (Nova-2)", model: "nova-2", language: "sv", filler_words: false },
+    { key: "nova2-th", label: "Thai (Nova-2)", model: "nova-2", language: "th", filler_words: false },
+    { key: "nova2-tr", label: "Turkish (Nova-2)", model: "nova-2", language: "tr", filler_words: false },
+    { key: "nova2-uk", label: "Ukrainian (Nova-2)", model: "nova-2", language: "uk", filler_words: false },
+    { key: "nova2-vi", label: "Vietnamese (Nova-2)", model: "nova-2", language: "vi", filler_words: false },
+  ];
+
 // State for the Deepgram API key
   const [apiKey, setApiKey] = useState<string | null>(null);
   // State to track if the component is actively listening and transcribing
@@ -37,86 +93,16 @@ const SpeechComponent: FC = () => {
   const [finalWords, setFinalWords] = useState<WordConfidence[]>([]);
   // State to store the current interim (non-final) transcript as words with confidence
   const [interimWords, setInterimWords] = useState<WordConfidence[]>([]);
-  // Model and Language selection state
-  const [selectedModel, setSelectedModel] = useState<string>("nova-3");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
-  // Feature toggles
-  const [enableFillerWords, setEnableFillerWords] = useState<boolean>(true);
+  // State for the selected combined transcription option
+  const [selectedOptionKey, setSelectedOptionKey] = useState<string>(transcriptionOptions[0].key); // Default to the first option
+  // Feature toggle for diarization
   const [enableDiarization, setEnableDiarization] = useState<boolean>(false);
-
 
   const connectionRef = useRef<LiveClient | null>(null);
   // State to hold the MediaRecorder instance for microphone input
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   // Ref to track if microphone setup has been attempted/completed, to avoid redundant setup calls
   const microphoneInitialized = useRef(false);
-
-  // Define models and their supported languages
-  const models = [
-    { name: "Nova-3", value: "nova-3", languages: [ // Languages supported by Nova-3, 'multi' covers non-English
-      { name: "English", value: "en" },
-      { name: "Spanish", value: "es" },
-      { name: "French", value: "fr" },
-      { name: "German", value: "de" },
-      { name: "Italian", value: "it" },
-      { name: "Portuguese", value: "pt" },
-      { name: "Dutch", value: "nl" },
-      { name: "Hindi", value: "hi" },
-      { name: "Japanese", value: "ja" },
-      // { name: "Korean", value: "ko" }, // Not listed in the 'multi' for Nova-3 from user doc
-      { name: "Russian", value: "ru" },
-      // { name: "Chinese", value: "zh" }, // Not listed in the 'multi' for Nova-3 from user doc
-    ]},
-    { name: "Nova-2", value: "nova-2", languages: [
-      { name: "Bulgarian", value: "bg" },
-      { name: "Catalan", value: "ca" },
-      { name: "Chinese (Mandarin, Simplified)", value: "zh" },
-      { name: "Chinese (Mandarin, Traditional)", value: "zh-TW" },
-      { name: "Chinese (Cantonese, Traditional)", value: "zh-HK" },
-      { name: "Czech", value: "cs" },
-      { name: "Danish", value: "da" },
-      { name: "Dutch", value: "nl" },
-      { name: "English", value: "en" },
-      { name: "Estonian", value: "et" },
-      { name: "Finnish", value: "fi" },
-      { name: "Flemish", value: "nl-BE" },
-      { name: "French", value: "fr" },
-      { name: "German", value: "de" },
-      { name: "German (Switzerland)", value: "de-CH" },
-      { name: "Greek", value: "el" },
-      { name: "Hindi", value: "hi" },
-      { name: "Hungarian", value: "hu" },
-      { name: "Indonesian", value: "id" },
-      { name: "Italian", value: "it" },
-      { name: "Japanese", value: "ja" },
-      { name: "Korean", value: "ko" },
-      { name: "Latvian", value: "lv" },
-      { name: "Lithuanian", value: "lt" },
-      { name: "Malay", value: "ms" },
-      { name: "Norwegian", value: "no" },
-      { name: "Polish", value: "pl" },
-      { name: "Portuguese", value: "pt" },
-      { name: "Romanian", value: "ro" },
-      { name: "Russian", value: "ru" },
-      { name: "Slovak", value: "sk" },
-      { name: "Spanish", value: "es" },
-      { name: "Swedish", value: "sv" },
-      { name: "Thai", value: "th" },
-      { name: "Turkish", value: "tr" },
-      { name: "Ukrainian", value: "uk" },
-      { name: "Vietnamese", value: "vi" }
-    ]}
-  ];
-
-  const availableLanguages = models.find(m => m.value === selectedModel)?.languages || [];
-
-  // Effect to reset language if selected model doesn't support current language
-  useEffect(() => {
-    if (!availableLanguages.find(lang => lang.value === selectedLanguage)) {
-      setSelectedLanguage(availableLanguages[0]?.value || "en");
-    }
-  }, [selectedModel, selectedLanguage, availableLanguages]);
-
 
   // Effect to fetch the Deepgram API key when the component mounts
   useEffect(() => {
@@ -222,36 +208,23 @@ const SpeechComponent: FC = () => {
     const deepgram = createClient(apiKey);
     console.log("Deepgram client created. Establishing live connection...");
 
-    // Define Deepgram connection options (aligned with the original, more complex app)
+    // Define Deepgram connection options
+    const selectedOption = transcriptionOptions.find(opt => opt.key === selectedOptionKey);
+    if (!selectedOption) {
+      console.error("Selected transcription option not found!");
+      alert("Error: Selected transcription option is invalid.");
+      return;
+    }
+
     const liveConnectionOptions: any = {
-      model: selectedModel,
+      model: selectedOption.model,
+      language: selectedOption.language,
       interim_results: true,
       smart_format: true,
       utterance_end_ms: 3000,
     };
 
-    // Set language parameter based on model and selected language
-    if (selectedModel === "nova-3") {
-      if (selectedLanguage === "en") {
-        liveConnectionOptions.language = "en";
-      } else {
-        // For Nova-3 non-English, use 'multi' if the language is in its 'multi' supported list
-        const nova3MultiLanguages = ["es", "fr", "de", "it", "pt", "nl", "hi", "ja", "ru"];
-        if (nova3MultiLanguages.includes(selectedLanguage)) {
-          liveConnectionOptions.language = "multi";
-        } else {
-          // Fallback or error if a language not supported by Nova-3 'multi' is selected
-          // For now, we'll let it pass selectedLanguage, which might error out,
-          // or one could add specific error handling here.
-          liveConnectionOptions.language = selectedLanguage;
-          console.warn(`Selected language ${selectedLanguage} may not be optimally supported by Nova-3's 'multi' mode or direct code.`);
-        }
-      }
-    } else { // For Nova-2 or other models
-      liveConnectionOptions.language = selectedLanguage;
-    }
-
-    if (enableFillerWords && selectedLanguage === "en") { // Filler words only for English
+    if (selectedOption.filler_words) {
       liveConnectionOptions.filler_words = true;
     }
     if (enableDiarization) {
@@ -413,40 +386,17 @@ const SpeechComponent: FC = () => {
   return (
     <div>
       <div>
-        <label htmlFor="model-select">Model: </label>
+        <label htmlFor="transcription-option-select">Transcription Setting: </label>
         <select
-          id="model-select"
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
+          id="transcription-option-select"
+          value={selectedOptionKey}
+          onChange={(e) => setSelectedOptionKey(e.target.value)}
           disabled={isListening}
         >
-          {models.map(model => (
-            <option key={model.value} value={model.value}>{model.name}</option>
+          {transcriptionOptions.map(option => (
+            <option key={option.key} value={option.key}>{option.label}</option>
           ))}
         </select>
-      </div>
-      <div>
-        <label htmlFor="language-select">Language: </label>
-        <select
-          id="language-select"
-          value={selectedLanguage}
-          onChange={(e) => setSelectedLanguage(e.target.value)}
-          disabled={isListening || availableLanguages.length === 0}
-        >
-          {availableLanguages.map(lang => (
-            <option key={lang.value} value={lang.value}>{lang.name} ({lang.value})</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="filler-words-toggle" style={{ marginRight: "10px" }}>Enable Filler Words (English only): </label>
-        <input
-          type="checkbox"
-          id="filler-words-toggle"
-          checked={enableFillerWords}
-          onChange={(e) => setEnableFillerWords(e.target.checked)}
-          disabled={isListening || selectedLanguage !== "en"}
-        />
       </div>
       <div>
         <label htmlFor="diarization-toggle" style={{ marginRight: "10px" }}>Enable Speaker Diarization: </label>
