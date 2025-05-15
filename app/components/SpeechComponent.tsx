@@ -1,17 +1,42 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { createClient, LiveClient, LiveTranscriptionEvents } from "@deepgram/sdk";
+import { useState, useEffect, useRef, FC } from "react";
+import {
+  createClient,
+  LiveClient,
+  LiveTranscriptionEvents,
+  LiveTranscriptionEvent,
+  // Word, // Removed problematic import
+  LiveConnectionState,
+  DeepgramError,
+  LiveMetadataEvent
+} from "@deepgram/sdk";
 
-const SpeechComponent = () => {
+// Define a local interface for the Deepgram word object structure
+interface DeepgramWordType {
+  word?: string;
+  punctuated_word?: string;
+  confidence?: number;
+  start?: number;
+  end?: number;
+  speaker?: number;
+}
+
+const SpeechComponent: FC = () => {
+  // Interface for word with confidence (used for state)
+  interface WordConfidence {
+    text: string;
+    confidence: number;
+  }
+
   // State for the Deepgram API key
   const [apiKey, setApiKey] = useState<string | null>(null);
   // State to track if the component is actively listening and transcribing
   const [isListening, setIsListening] = useState(false);
-  // State to store the accumulated final transcript
-  const [finalTranscript, setFinalTranscript] = useState<string>("");
-  // State to store the current interim (non-final) transcript
-  const [interimTranscript, setInterimTranscript] = useState<string>("");
+  // State to store the accumulated final transcript as words with confidence
+  const [finalWords, setFinalWords] = useState<WordConfidence[]>([]);
+  // State to store the current interim (non-final) transcript as words with confidence
+  const [interimWords, setInterimWords] = useState<WordConfidence[]>([]);
   // Ref to hold the Deepgram LiveClient instance
   // Using useRef to ensure the ondataavailable callback for MediaRecorder
   // has a stable reference to the current connection object.
@@ -132,6 +157,11 @@ const SpeechComponent = () => {
       smart_format: true,
       filler_words: true,
       utterance_end_ms: 3000,
+      // Request word-level confidence
+      // Note: Deepgram SDK/API usually includes word confidence by default with alternatives.
+      // Explicitly requesting it might not be necessary, but good to be aware of.
+      // For some models or older SDK versions, a parameter like `word_confidence: true` might be needed.
+      // However, the standard response structure includes it.
     };
     const liveConnection = deepgram.listen.live(liveConnectionOptions);
 
@@ -151,30 +181,38 @@ const SpeechComponent = () => {
     });
 
     // Event listener for receiving transcripts from Deepgram
-    liveConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
+    liveConnection.on(LiveTranscriptionEvents.Transcript, (data: LiveTranscriptionEvent) => {
       console.log("Deepgram Transcript received:", JSON.stringify(data, null, 2));
-      const text = data.channel.alternatives[0].transcript;
+      const alternative = data.channel?.alternatives[0];
+      if (!alternative) return;
 
-      // Handle final and interim transcripts separately
-      if (data.is_final && text.trim()) {
-        console.log(`Final transcript text: "${text}"`);
-        setFinalTranscript((prev) => prev + text + " "); // Append to final transcript
-        setInterimTranscript(""); // Clear interim transcript
-      } else if (!data.is_final && text.trim()) {
-        console.log(`Interim transcript text: "${text}"`);
-        setInterimTranscript(text); // Update interim transcript
-      } else {
-        if (!data.is_final && text === "") {
-            // This can occur if Deepgram sends an empty interim result, e.g., before speech_final.
-            // Optionally, clear interimTranscript if it should disappear on silence:
-            // setInterimTranscript("");
+      const words = alternative.words;
+
+      if (!words || words.length === 0) {
+        console.log("Received transcript data, but no words found.");
+        if (data.is_final) {
+          setInterimWords([]); // Clear interim if final and no words
         }
-        console.log("Received transcript data, but no significant text found or it's an empty final.");
+        return;
+      }
+
+      const newWords: WordConfidence[] = words.map((wordInfo: DeepgramWordType) => ({
+        text: wordInfo.punctuated_word || wordInfo.word || "",
+        confidence: wordInfo.confidence || 0,
+      }));
+
+      if (data.is_final) {
+        console.log("Final transcript words:", newWords);
+        setFinalWords((prev: WordConfidence[]) => [...prev, ...newWords]);
+        setInterimWords([]); // Clear interim transcript
+      } else {
+        console.log("Interim transcript words:", newWords);
+        setInterimWords(newWords); // Update interim transcript
       }
     });
 
     // Event listener for when the Deepgram connection closes
-    liveConnection.on(LiveTranscriptionEvents.Close, (event) => {
+    liveConnection.on(LiveTranscriptionEvents.Close, (event: LiveConnectionState) => {
       console.log("Deepgram connection CLOSED.", event);
       setIsListening(false);
       connectionRef.current = null; // Clear the connection ref
@@ -187,14 +225,14 @@ const SpeechComponent = () => {
     });
 
     // Event listener for Deepgram connection errors
-    liveConnection.on(LiveTranscriptionEvents.Error, (error) => {
+    liveConnection.on(LiveTranscriptionEvents.Error, (error: DeepgramError) => {
       console.error("Deepgram connection ERROR:", error);
       setIsListening(false);
       // Consider adding logic here to attempt reconnection or notify the user more gracefully.
     });
 
     // Event listener for Deepgram metadata
-    liveConnection.on(LiveTranscriptionEvents.Metadata, (metadata) => {
+    liveConnection.on(LiveTranscriptionEvents.Metadata, (metadata: LiveMetadataEvent) => {
       console.log("Deepgram connection METADATA:", metadata);
     });
 
@@ -222,7 +260,7 @@ const SpeechComponent = () => {
       // Stop all tracks on the media stream to release the microphone
       if (mediaRecorder?.stream) {
         console.log("Stopping all media tracks.");
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
     };
   };
@@ -261,6 +299,19 @@ const SpeechComponent = () => {
     }
   };
 
+  // Helper function to get background color based on confidence
+  const getConfidenceColor = (confidence: number): string => {
+    if (confidence > 0.9) {
+      return "rgba(0, 255, 0, 0.3)"; // Light Green
+    } else if (confidence > 0.7) {
+      return "rgba(255, 255, 0, 0.3)"; // Light Yellow
+    } else if (confidence > 0.5) {
+      return "rgba(255, 165, 0, 0.3)"; // Light Orange
+    } else {
+      return "rgba(255, 0, 0, 0.3)"; // Light Red
+    }
+  };
+
   // Render the UI
   return (
     <div>
@@ -270,10 +321,18 @@ const SpeechComponent = () => {
       <p>Status: {isListening ? "Listening..." : "Not Listening"}</p>
       {apiKey ? <p style={{color: "green"}}>API Key Loaded</p> : <p style={{color: "red"}}>API Key NOT Loaded - Check .env.local and server console.</p>}
       <h3>Transcript:</h3>
-      <p>
-        {finalTranscript}
-        <span style={{ color: "gray" }}>{interimTranscript}</span>
-      </p>
+      <div style={{ border: "1px solid #ccc", padding: "10px", minHeight: "100px", whiteSpace: "pre-wrap" }}>
+        {finalWords.map((word: WordConfidence, index: number) => (
+          <span key={`final-${index}`} style={{ backgroundColor: getConfidenceColor(word.confidence), padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
+            {word.text}{' '}
+          </span>
+        ))}
+        {interimWords.map((word: WordConfidence, index: number) => (
+          <span key={`interim-${index}`} style={{ backgroundColor: getConfidenceColor(word.confidence), color: "#555", padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
+            {word.text}{' '}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };

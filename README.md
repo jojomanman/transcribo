@@ -76,6 +76,7 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 *   **Code Readability:**
     *   Comments have been added to [`app/components/SpeechComponent.tsx`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\components\SpeechComponent.tsx:1) to explain state variables, function purposes, and key logic sections.
 
+*   **Deepgram API Reference:** For a comprehensive reference of the Deepgram API, including all available query parameters, response structures, and features discussed in this project, please see the [Deepgram API Documentation](../deepgram_api.md).
 ## Deployment (Example: Vercel)
 
 1.  Push your code to a GitHub repository.
