@@ -28,8 +28,7 @@ const SpeechComponent: FC = () => {
     text: string;
     confidence: number;
   }
-
-  // State for the Deepgram API key
+// State for the Deepgram API key
   const [apiKey, setApiKey] = useState<string | null>(null);
   // State to track if the component is actively listening and transcribing
   const [isListening, setIsListening] = useState(false);
@@ -37,14 +36,51 @@ const SpeechComponent: FC = () => {
   const [finalWords, setFinalWords] = useState<WordConfidence[]>([]);
   // State to store the current interim (non-final) transcript as words with confidence
   const [interimWords, setInterimWords] = useState<WordConfidence[]>([]);
-  // Ref to hold the Deepgram LiveClient instance
-  // Using useRef to ensure the ondataavailable callback for MediaRecorder
-  // has a stable reference to the current connection object.
+  // Model and Language selection state
+  const [selectedModel, setSelectedModel] = useState<string>("nova-3");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+
   const connectionRef = useRef<LiveClient | null>(null);
   // State to hold the MediaRecorder instance for microphone input
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   // Ref to track if microphone setup has been attempted/completed, to avoid redundant setup calls
   const microphoneInitialized = useRef(false);
+
+  // Define models and their supported languages
+  const models = [
+    { name: "Nova-3", value: "nova-3", languages: [
+      { name: "English", value: "en" },
+      { name: "Spanish", value: "es" },
+      { name: "French", value: "fr" },
+      { name: "German", value: "de" },
+      { name: "Italian", value: "it" },
+      { name: "Portuguese", value: "pt" },
+      { name: "Dutch", value: "nl" },
+      { name: "Hindi", value: "hi" },
+      { name: "Japanese", value: "ja" },
+      { name: "Korean", value: "ko" },
+      { name: "Russian", value: "ru" },
+      { name: "Chinese", value: "zh" },
+    ]},
+    { name: "Nova-2", value: "nova-2", languages: [
+      { name: "English", value: "en" },
+      { name: "Spanish", value: "es" },
+      { name: "French", value: "fr" },
+      { name: "German", value: "de" },
+      { name: "Portuguese", value: "pt" },
+      // Add other Nova-2 supported languages if known, keeping it simpler for example
+    ]}
+  ];
+
+  const availableLanguages = models.find(m => m.value === selectedModel)?.languages || [];
+
+  // Effect to reset language if selected model doesn't support current language
+  useEffect(() => {
+    if (!availableLanguages.find(lang => lang.value === selectedLanguage)) {
+      setSelectedLanguage(availableLanguages[0]?.value || "en");
+    }
+  }, [selectedModel, selectedLanguage, availableLanguages]);
+
 
   // Effect to fetch the Deepgram API key when the component mounts
   useEffect(() => {
@@ -152,17 +188,14 @@ const SpeechComponent: FC = () => {
 
     // Define Deepgram connection options (aligned with the original, more complex app)
     const liveConnectionOptions = {
-      model: "nova-3",
+      model: selectedModel,
+      language: selectedLanguage,
       interim_results: true,
       smart_format: true,
-      filler_words: true,
+      filler_words: true, // Note: filler_words might be model/language specific
       utterance_end_ms: 3000,
-      // Request word-level confidence
-      // Note: Deepgram SDK/API usually includes word confidence by default with alternatives.
-      // Explicitly requesting it might not be necessary, but good to be aware of.
-      // For some models or older SDK versions, a parameter like `word_confidence: true` might be needed.
-      // However, the standard response structure includes it.
     };
+    console.log("Connecting with options:", liveConnectionOptions);
     const liveConnection = deepgram.listen.live(liveConnectionOptions);
 
     // Event listener for when the Deepgram connection opens
@@ -315,6 +348,33 @@ const SpeechComponent: FC = () => {
   // Render the UI
   return (
     <div>
+      <div>
+        <label htmlFor="model-select">Model: </label>
+        <select
+          id="model-select"
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          disabled={isListening}
+        >
+          {models.map(model => (
+            <option key={model.value} value={model.value}>{model.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="language-select">Language: </label>
+        <select
+          id="language-select"
+          value={selectedLanguage}
+          onChange={(e) => setSelectedLanguage(e.target.value)}
+          disabled={isListening || availableLanguages.length === 0}
+        >
+          {availableLanguages.map(lang => (
+            <option key={lang.value} value={lang.value}>{lang.name} ({lang.value})</option>
+          ))}
+        </select>
+      </div>
+      <br />
       <button onClick={toggleListening} disabled={!apiKey}>
         {isListening ? "Stop Listening" : "Start Listening"}
       </button>
