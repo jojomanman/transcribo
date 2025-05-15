@@ -73,7 +73,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
     <ScrollArea
       className={`whitespace-pre-wrap text-sm leading-relaxed scroll-smooth
                   ${isDesktopView ? 'h-[calc(100vh-300px)] min-h-[300px] border rounded-md bg-muted/30 dark:bg-muted/50'
-                                 : 'flex-grow'}`}
+                                 : 'h-full'}`}
     >
       <div
         ref={transcriptContainerRef as RefObject<HTMLDivElement>} // Cast for clarity with ScrollArea's child
@@ -147,7 +147,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
   );
 
   return (
-    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-[calc(50%-56px)] pb-14'}`}> {/* Adjusted for explicit h-14 (56px) bar */}
+    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-full'}`}> {/* Mobile: h-full, flex flex-col */}
       {userMessage && (
         <div className={`p-3 rounded-md text-sm flex items-center space-x-2 mb-2 mx-2 ${
           userMessage.type === 'error' ? 'bg-red-100 dark:bg-red-900/70 text-red-700 dark:text-red-200' :
@@ -161,9 +161,17 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
         </div>
       )}
 
-      {renderTranscript()}
+      {/* Wrapper for transcript area to make it grow */}
+      <div className={` ${isDesktopView ? '' : 'flex-grow overflow-hidden'}`}>
+        {renderTranscript()}
+      </div>
 
       {!isDesktopView && renderMobileControls()}
+      {/* The mobile controls bar is fixed, so its height (h-14 / 56px) is implicitly handled by its fixed positioning.
+          The main content area above needs to allow space for it.
+          The MobileLayout in page.tsx should ensure this SpeechComponent has a full height context to work within,
+          and the pb-14 on MobileLayout's main content div will prevent overlap.
+      */}
     </div>
   );
 };
