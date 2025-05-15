@@ -7,28 +7,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  padding: 20px;
-  font-family: sans-serif;
-  background-color: #f0f0f0;
-  color: #333;
-}
-
-h1 {
-  text-align: center;
-  color: #1a1a1a;
-}
-
-main {
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
