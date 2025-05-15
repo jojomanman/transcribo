@@ -147,7 +147,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
   );
 
   return (
-    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-[calc(100%-56px)] pb-14'}`}> {/* Adjusted for explicit h-14 (56px) bar */}
+    <div className={`flex flex-col w-full ${isDesktopView ? 'h-full' : 'h-[calc(50%-56px)] pb-14'}`}> {/* Adjusted for explicit h-14 (56px) bar */}
       {userMessage && (
         <div className={`p-3 rounded-md text-sm flex items-center space-x-2 mb-2 mx-2 ${
           userMessage.type === 'error' ? 'bg-red-100 dark:bg-red-900/70 text-red-700 dark:text-red-200' :
