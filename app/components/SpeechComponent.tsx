@@ -218,14 +218,18 @@ const SpeechComponent: FC = () => {
     console.log("Deepgram client created. Establishing live connection...");
 
     // Define Deepgram connection options (aligned with the original, more complex app)
-    const liveConnectionOptions = {
+    const liveConnectionOptions: any = { // Use 'any' for options to dynamically add filler_words
       model: selectedModel,
       language: selectedLanguage,
       interim_results: true,
       smart_format: true,
-      filler_words: true, // Note: filler_words might be model/language specific
       utterance_end_ms: 3000,
     };
+
+    if (selectedLanguage === "en") {
+      liveConnectionOptions.filler_words = true;
+    }
+
     console.log("Connecting with options:", liveConnectionOptions);
     const liveConnection = deepgram.listen.live(liveConnectionOptions);
 
