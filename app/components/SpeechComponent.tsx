@@ -43,7 +43,7 @@ const SpeechComponent: FC = () => {
   const transcriptionOptions: TranscriptionOption[] = [
     { key: "nova3-en-fw", label: "English (Nova-3) + Filler Words", model: "nova-3", language: "en", filler_words: true },
     { key: "nova3-en", label: "English (Nova-3)", model: "nova-3", language: "en", filler_words: false },
-    { key: "nova3-multi", label: "Multilingual (Nova-3) (EN,ES,FR,DE,IT,PT,NL,HI,JA,RU)", model: "nova-3", language: "multi", filler_words: false },
+    { key: "nova3-multi", label: "Multi (Nova-3) (EN,ES,FR,DE,IT,PT,NL,HI,JA,RU)", model: "nova-3", language: "multi", filler_words: false },
     // Nova-2 Languages (filler_words: false for all non-English)
     { key: "nova2-bg", label: "Bulgarian (Nova-2)", model: "nova-2", language: "bg", filler_words: false },
     { key: "nova2-ca", label: "Catalan (Nova-2)", model: "nova-2", language: "ca", filler_words: false },
@@ -129,30 +129,33 @@ const SpeechComponent: FC = () => {
    * Initializes MediaRecorder with 'audio/webm;codecs=opus' mime type.
    * Sets up an event listener for 'dataavailable' to send audio chunks to Deepgram.
    */
-  const setupMicrophone = async () => {
+  const setupMicrophone = async (): Promise<MediaRecorder | null> => {
     console.log("Attempting to setup microphone...");
-    // Prevent multiple setup attempts if already initialized or in progress
-    if (microphoneInitialized.current) {
-      console.log("Microphone already initialized or setup in progress.");
-      return;
+
+    // If already successfully initialized and recorder exists in state, return it.
+    if (microphoneInitialized.current && mediaRecorder) {
+      console.log("Microphone already initialized and recorder available in state.");
+      return mediaRecorder;
     }
-    microphoneInitialized.current = true;
+
+    // If flag is true but no recorder, it implies an issue; reset flag to allow re-attempt.
+    if (microphoneInitialized.current && !mediaRecorder) {
+        console.warn("Microphone was marked initialized but no recorder found in state. Resetting for new setup attempt.");
+        microphoneInitialized.current = false;
+    }
 
     try {
-      // Request microphone access
+      console.log("Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log("Microphone stream acquired.");
 
-      // Create MediaRecorder instance
       const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
       console.log("MediaRecorder created with mimeType: audio/webm;codecs=opus");
 
-      // Event handler for when audio data is available
       recorder.ondataavailable = (event) => {
         console.log("MediaRecorder ondataavailable event fired.");
         if (event.data.size > 0) {
           console.log(`Audio data available: ${event.data.size} bytes`);
-          // Send audio data to Deepgram if connection is open
           if (connectionRef.current && connectionRef.current.getReadyState() === 1 /* WebSocket.OPEN */) {
             console.log("Sending audio data to Deepgram via connectionRef.");
             connectionRef.current.send(event.data);
@@ -164,13 +167,16 @@ const SpeechComponent: FC = () => {
         }
       };
 
-      // Store the MediaRecorder instance in state
       setMediaRecorder(recorder);
-      console.log("MediaRecorder set in state.");
+      microphoneInitialized.current = true; // Mark as successfully initialized
+      console.log("MediaRecorder set in state and microphone marked as initialized.");
+      return recorder;
     } catch (error) {
       console.error("Error accessing or setting up microphone:", error);
       alert("Error accessing microphone. Please ensure permission is granted and try again. Check console for details.");
-      microphoneInitialized.current = false; // Allow retry if setup failed
+      setMediaRecorder(null); // Ensure recorder state is null on failure
+      microphoneInitialized.current = false; // Mark as not successfully initialized
+      return null;
     }
   };
 
@@ -194,14 +200,16 @@ const SpeechComponent: FC = () => {
 
     // Ensure MediaRecorder is available, setting it up if necessary
     if (!mediaRecorder) {
-      console.log("MediaRecorder not available, attempting to set it up before connecting to Deepgram.");
-      await setupMicrophone();
-      if (!mediaRecorder) { // Check again if setupMicrophone failed
-        console.error("Microphone setup failed or still not available. Cannot connect to Deepgram.");
+      console.log("connectToDeepgram: MediaRecorder not in state, calling setupMicrophone.");
+      const recorderInstance = await setupMicrophone(); // setupMicrophone now returns MediaRecorder | null
+      if (!recorderInstance) {
+        console.error("connectToDeepgram: Microphone setup failed. Cannot connect to Deepgram.");
         alert("Microphone not available. Cannot connect to Deepgram.");
-        return;
+        return; // No cleanup function to return as connection wasn't made
       }
-      console.log("Microphone setup complete, proceeding with Deepgram connection.");
+      // If setupMicrophone succeeded, it called setMediaRecorder.
+      // The mediaRecorder state will update. The Open event handler later should see the updated state.
+      console.log("connectToDeepgram: Microphone setup initiated, instance obtained. State will update.");
     }
 
     console.log("Creating Deepgram client...");
@@ -350,22 +358,26 @@ const SpeechComponent: FC = () => {
       return;
     }
 
-    // Setup microphone if not already done
-    if (!mediaRecorder && !microphoneInitialized.current) {
-      console.log("toggleListening: Microphone not ready and not initialized, calling setupMicrophone.");
-      await setupMicrophone();
-    }
-
-    // Start or stop listening based on current state
     if (isListening && connectionRef.current) {
       console.log("toggleListening: Currently listening, attempting to stop via connectionRef.");
       connectionRef.current.finish(); // This will trigger the Close event and associated cleanup
-    } else if (mediaRecorder) { // Only attempt to connect if MediaRecorder is available
-      console.log("toggleListening: Not listening, mediaRecorder available, attempting to start.");
-      await connectToDeepgram();
-    } else {
-      console.error("toggleListening: Microphone not ready even after setup attempt.");
-      alert("Microphone not ready. Please ensure permissions are granted and try refreshing.");
+    } else { // Not listening, try to start
+      let recorderToUse = mediaRecorder; // Check current state
+
+      if (!recorderToUse) { // If no recorder from state, try to set it up
+        console.log("toggleListening: MediaRecorder not in state, calling setupMicrophone.");
+        recorderToUse = await setupMicrophone(); // This will set state and return the instance
+      }
+      // After this, recorderToUse holds the instance if setup was successful (now or previously).
+      // And mediaRecorder state should also be (or getting) updated.
+
+      if (recorderToUse) {
+        console.log("toggleListening: MediaRecorder is available. Attempting to connect to Deepgram.");
+        await connectToDeepgram();
+      } else {
+        console.error("toggleListening: Microphone setup failed or not available after attempt.");
+        alert("Microphone not ready. Please ensure permissions are granted and try refreshing.");
+      }
     }
   };
 
