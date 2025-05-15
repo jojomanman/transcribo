@@ -102,7 +102,6 @@ const SpeechComponent: FC = () => {
   const [interimWords, setInterimWords] = useState<WordConfidence[]>([]);
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>(transcriptionOptions[0].key);
   const [enableDiarization, setEnableDiarization] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [userMessage, setUserMessage] = useState<{ type: 'error' | 'success' | 'info', text: string } | null>(null);
 
 
@@ -324,135 +323,192 @@ const SpeechComponent: FC = () => {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto shadow-xl dark:shadow-primary/20">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-2xl font-semibold">Live Transcription</CardTitle>
-        <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)} aria-label="Toggle settings">
-          <Settings2 className={`h-5 w-5 transition-transform duration-300 ${showSettings ? "rotate-90" : ""}`} />
-        </Button>
-      </CardHeader>
-
-      {showSettings && (
-        <CardContent className="border-t pt-4 pb-6 space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="transcription-option-select" className="text-sm font-medium">Transcription Model & Language</Label>
-            <Select
-              value={selectedOptionKey}
-              onValueChange={setSelectedOptionKey}
-              disabled={isListening}
-            >
-              <SelectTrigger id="transcription-option-select" className="w-full bg-background">
-                <SelectValue placeholder="Select model and language" />
-              </SelectTrigger>
-              <SelectContent>
-                {transcriptionOptions.map(option => (
-                  <SelectItem key={option.key} value={option.key}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="diarization-toggle" className="text-sm font-medium">
-              Enable Speaker Diarization
-            </Label>
-            <Switch
-              id="diarization-toggle"
-              checked={enableDiarization}
-              onCheckedChange={setEnableDiarization}
-              disabled={isListening}
-            />
-          </div>
-        </CardContent>
+    <div className="flex flex-col h-full w-full max-w-2xl mx-auto"> {/* Occupy available height */}
+      {userMessage && (
+        <div className={`p-3 rounded-md text-sm flex items-center space-x-2 mb-2 ${
+          userMessage.type === 'error' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' :
+          userMessage.type === 'success' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' :
+          'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+        }`}>
+          {userMessage.type === 'error' && <AlertTriangle className="h-5 w-5" />}
+          {userMessage.type === 'success' && <CheckCircle2 className="h-5 w-5" />}
+          {userMessage.type === 'info' && <Info className="h-5 w-5" />}
+          <span>{userMessage.text}</span>
+        </div>
       )}
 
-      <CardContent className="pt-6">
-        {userMessage && (
-          <div className={`mb-4 p-3 rounded-md text-sm flex items-center space-x-2 ${
-            userMessage.type === 'error' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' :
-            userMessage.type === 'success' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' :
-            'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-          }`}>
-            {userMessage.type === 'error' && <AlertTriangle className="h-5 w-5" />}
-            {userMessage.type === 'success' && <CheckCircle2 className="h-5 w-5" />}
-            {userMessage.type === 'info' && <Info className="h-5 w-5" />}
-            <span>{userMessage.text}</span>
-          </div>
+      {/* Transcript Area */}
+      <div
+        ref={transcriptContainerRef}
+        className="flex-grow p-3 border rounded-md bg-muted/30 dark:bg-muted/50 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed scroll-smooth mb-4" // flex-grow to take available space, mb-4 for spacing from controls
+      >
+        {finalWords.length === 0 && interimWords.length === 0 && (
+          <p className="text-muted-foreground italic">
+            {isListening ? "Listening for speech..." : "Press Mic to begin."}
+          </p>
         )}
-
-        <div
-          ref={transcriptContainerRef}
-          className="h-48 sm:h-64 p-3 border rounded-md bg-muted/30 dark:bg-muted/50 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed scroll-smooth"
-        >
-          {finalWords.length === 0 && interimWords.length === 0 && (
-            <p className="text-muted-foreground italic">
-              {isListening ? "Listening for speech..." : "Press 'Start Listening' to begin."}
-            </p>
-          )}
-          {(() => {
-            let lastSpeaker: number | undefined = undefined;
-            return finalWords.map((word, index) => {
-              const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker;
-              lastSpeaker = word.speaker;
-              return (
-                <span key={`final-${index}`}>
-                  {showSpeakerLabel && (
-                    <strong className="block mt-1.5 mb-0.5 text-xs font-semibold text-primary dark:text-primary-foreground/80">
-                      Speaker {word.speaker}:
-                    </strong>
-                  )}
-                  <span className={`px-1 py-0.5 rounded-sm ${getConfidenceColorClasses(word.confidence)}`}>
-                    {word.text}{' '}
-                  </span>
+        {(() => {
+          let lastSpeaker: number | undefined = undefined;
+          return finalWords.map((word, index) => {
+            const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker;
+            lastSpeaker = word.speaker;
+            return (
+              <span key={`final-${index}`}>
+                {showSpeakerLabel && (
+                  <strong className="block mt-1.5 mb-0.5 text-xs font-semibold text-primary dark:text-primary-foreground/80">
+                    Speaker {word.speaker}:
+                  </strong>
+                )}
+                <span className={`px-1 py-0.5 rounded-sm ${getConfidenceColorClasses(word.confidence)}`}>
+                  {word.text}{' '}
                 </span>
-              );
-            });
-          })()}
-          {(() => {
-            let lastSpeaker: number | undefined = undefined;
-            const currentFinalSpeaker = finalWords.length > 0 ? finalWords[finalWords.length -1].speaker : undefined;
+              </span>
+            );
+          });
+        })()}
+        {(() => {
+          let lastSpeaker: number | undefined = undefined;
+          const currentFinalSpeaker = finalWords.length > 0 ? finalWords[finalWords.length -1].speaker : undefined;
 
-            return interimWords.map((word, index) => {
-              const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker && (index === 0 ? word.speaker !== currentFinalSpeaker : true);
-              lastSpeaker = word.speaker;
-              return (
-                <span key={`interim-${index}`}>
-                  {showSpeakerLabel && (
-                     <strong className="block mt-1.5 mb-0.5 text-xs font-semibold text-muted-foreground/70 dark:text-muted-foreground/50">
-                      Speaker {word.speaker}:
-                    </strong>
-                  )}
-                  <span className={`px-1 py-0.5 rounded-sm opacity-70 ${getConfidenceColorClasses(word.confidence)}`}>
-                    {word.text}{' '}
-                  </span>
+          return interimWords.map((word, index) => {
+            const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker && (index === 0 ? word.speaker !== currentFinalSpeaker : true);
+            lastSpeaker = word.speaker;
+            return (
+              <span key={`interim-${index}`}>
+                {showSpeakerLabel && (
+                   <strong className="block mt-1.5 mb-0.5 text-xs font-semibold text-muted-foreground/70 dark:text-muted-foreground/50">
+                    Speaker {word.speaker}:
+                  </strong>
+                )}
+                <span className={`px-1 py-0.5 rounded-sm opacity-70 ${getConfidenceColorClasses(word.confidence)}`}>
+                  {word.text}{' '}
                 </span>
-              );
-            });
-          })()}
+              </span>
+            );
+          });
+        })()}
+      </div>
+
+      {/* Controls/Options Area (Below Transcript - Mobile Only) */}
+      <div className="mb-4 px-1 space-y-3 md:hidden"> {/* Spacing for controls, md:hidden */}
+        <div className="flex items-center justify-between">
+          <Label htmlFor="diarization-toggle-mobile" className="text-sm font-medium">
+            Enable Speaker Diarization
+          </Label>
+          <Switch
+            id="diarization-toggle-mobile"
+            checked={enableDiarization}
+            onCheckedChange={setEnableDiarization}
+            disabled={isListening}
+          />
         </div>
-      </CardContent>
+        {/* "Live Transcription" toggle is implicitly handled by the main record button */}
+      </div>
 
-      <CardFooter className="flex flex-col sm:flex-row items-center justify-between pt-6 border-t">
-        <p className="text-xs text-muted-foreground mb-2 sm:mb-0">
-          Status: {isListening ? "Listening..." : "Not Listening"}
-          {apiKey === null && " (API Key Loading...)"}
-        </p>
+      {/* Bottom Action Bar (Fixed - Mobile Only) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 shadow-md flex items-center justify-between space-x-3 md:hidden"> {/* md:hidden to hide on desktop */}
+        {/* Model Selection */}
+        <div className="flex-grow-[2] min-w-0"> {/* Allow select to take space but also shrink */}
+          <Select
+            value={selectedOptionKey}
+            onValueChange={setSelectedOptionKey}
+            disabled={isListening}
+          >
+            <SelectTrigger id="transcription-option-select-mobile" className="w-full bg-background text-xs h-10">
+              <SelectValue placeholder="Model & Lang." />
+            </SelectTrigger>
+            <SelectContent>
+              {transcriptionOptions.map(option => (
+                <SelectItem key={option.key} value={option.key} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Record Button */}
         <Button
           onClick={toggleListening}
           disabled={!apiKey || (isListening && !connectionRef.current)}
-          className="w-full sm:w-auto min-w-[160px] transition-all duration-150 ease-in-out"
+          className="flex-grow-[1] min-w-[80px] h-10 transition-all duration-150 ease-in-out" // Adjusted for mobile
           variant={isListening ? "destructive" : "default"}
+          size="lg" // Make button prominent
         >
           {isListening ? (
-            <MicOff className="mr-2 h-4 w-4 animate-pulse" />
+            <MicOff className="h-5 w-5 sm:mr-2" /> // Icon only on very small, then with text
           ) : (
-            <Mic className="mr-2 h-4 w-4" />
+            <Mic className="h-5 w-5 sm:mr-2" />
           )}
-          {isListening ? "Stop Listening" : "Start Listening"}
+          <span className="hidden sm:inline">{isListening ? "Stop" : "Record"}</span>
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+      {/* Desktop Controls Area */}
+      <div className="hidden md:block mt-6 w-full"> {/* md:block to show on desktop, mt-6 for spacing from transcript */}
+        <Card className="shadow-lg dark:shadow-primary/10">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">Controls & Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-4 pb-6">
+            <div className="space-y-2">
+              <Label htmlFor="transcription-option-select-desktop" className="text-sm font-medium">
+                Transcription Model & Language
+              </Label>
+              <Select
+                value={selectedOptionKey}
+                onValueChange={setSelectedOptionKey}
+                disabled={isListening}
+              >
+                <SelectTrigger id="transcription-option-select-desktop" className="w-full bg-background">
+                  <SelectValue placeholder="Select model and language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {transcriptionOptions.map(option => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="diarization-toggle-desktop" className="text-sm font-medium">
+                Enable Speaker Diarization
+              </Label>
+              <Switch
+                id="diarization-toggle-desktop"
+                checked={enableDiarization}
+                onCheckedChange={setEnableDiarization}
+                disabled={isListening}
+              />
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              Status: {isListening ? "Listening..." : "Not Listening"}
+              {apiKey === null && " (API Key Loading...)"}
+              {!apiKey && !userMessage?.text.includes("DEEPGRAM_API_KEY not configured") && " (Attempting to load API Key)"}
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col sm:flex-row items-center justify-end pt-4 border-t">
+            <Button
+              onClick={toggleListening}
+              disabled={!apiKey || (isListening && !connectionRef.current)}
+              className="w-full sm:w-auto min-w-[180px] transition-all duration-150 ease-in-out"
+              variant={isListening ? "destructive" : "default"}
+              size="lg"
+            >
+              {isListening ? (
+                <MicOff className="mr-2 h-5 w-5 animate-pulse" />
+              ) : (
+                <Mic className="mr-2 h-5 w-5" />
+              )}
+              {isListening ? "Stop Listening" : "Start Listening"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
   );
 };
 
