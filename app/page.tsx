@@ -1,7 +1,24 @@
+"use client"; // Required for hooks like useState and useEffect
+
 import SpeechComponent from "@/app/components/SpeechComponent";
+import DesktopLayout from "@/app/components/DesktopLayout"; // Import the new DesktopLayout
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useDeviceDetection } from "@/hooks/useDeviceDetection"; // Import the hook
 
 export default function HomePage() {
+  const { isDesktop } = useDeviceDetection();
+
+  // Handle loading state for device detection
+  if (isDesktop === null) {
+    // You might want to render a loader here or nothing to avoid layout shifts
+    return null;
+  }
+
+  if (isDesktop) {
+    return <DesktopLayout />;
+  }
+
+  // Mobile Layout (existing structure)
   return (
     <main className="flex flex-col items-center min-h-screen bg-background text-foreground p-4 sm:p-6 md:p-8">
       <header className="w-full max-w-4xl flex justify-between items-center mb-8 sm:mb-12">
