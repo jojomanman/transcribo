@@ -27,6 +27,7 @@ const SpeechComponent: FC = () => {
   interface WordConfidence {
     text: string;
     confidence: number;
+    speaker?: number; // Added for diarization
   }
 // State for the Deepgram API key
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -39,6 +40,10 @@ const SpeechComponent: FC = () => {
   // Model and Language selection state
   const [selectedModel, setSelectedModel] = useState<string>("nova-3");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+  // Feature toggles
+  const [enableFillerWords, setEnableFillerWords] = useState<boolean>(true);
+  const [enableDiarization, setEnableDiarization] = useState<boolean>(false);
+
 
   const connectionRef = useRef<LiveClient | null>(null);
   // State to hold the MediaRecorder instance for microphone input
@@ -226,8 +231,11 @@ const SpeechComponent: FC = () => {
       utterance_end_ms: 3000,
     };
 
-    if (selectedLanguage === "en") {
+    if (enableFillerWords && selectedLanguage === "en") {
       liveConnectionOptions.filler_words = true;
+    }
+    if (enableDiarization) {
+      liveConnectionOptions.diarize = true;
     }
 
     console.log("Connecting with options:", liveConnectionOptions);
@@ -267,6 +275,7 @@ const SpeechComponent: FC = () => {
       const newWords: WordConfidence[] = words.map((wordInfo: DeepgramWordType) => ({
         text: wordInfo.punctuated_word || wordInfo.word || "",
         confidence: wordInfo.confidence || 0,
+        speaker: wordInfo.speaker,
       }));
 
       if (data.is_final) {
@@ -409,6 +418,26 @@ const SpeechComponent: FC = () => {
           ))}
         </select>
       </div>
+      <div>
+        <label htmlFor="filler-words-toggle" style={{ marginRight: "10px" }}>Enable Filler Words (English only): </label>
+        <input
+          type="checkbox"
+          id="filler-words-toggle"
+          checked={enableFillerWords}
+          onChange={(e) => setEnableFillerWords(e.target.checked)}
+          disabled={isListening || selectedLanguage !== "en"}
+        />
+      </div>
+      <div>
+        <label htmlFor="diarization-toggle" style={{ marginRight: "10px" }}>Enable Speaker Diarization: </label>
+        <input
+          type="checkbox"
+          id="diarization-toggle"
+          checked={enableDiarization}
+          onChange={(e) => setEnableDiarization(e.target.checked)}
+          disabled={isListening}
+        />
+      </div>
       <br />
       <button onClick={toggleListening} disabled={!apiKey}>
         {isListening ? "Stop Listening" : "Start Listening"}
@@ -417,16 +446,36 @@ const SpeechComponent: FC = () => {
       {apiKey ? <p style={{color: "green"}}>API Key Loaded</p> : <p style={{color: "red"}}>API Key NOT Loaded - Check .env.local and server console.</p>}
       <h3>Transcript:</h3>
       <div style={{ border: "1px solid #ccc", padding: "10px", minHeight: "100px", whiteSpace: "pre-wrap" }}>
-        {finalWords.map((word: WordConfidence, index: number) => (
-          <span key={`final-${index}`} style={{ backgroundColor: getConfidenceColor(word.confidence), padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
-            {word.text}{' '}
-          </span>
-        ))}
-        {interimWords.map((word: WordConfidence, index: number) => (
-          <span key={`interim-${index}`} style={{ backgroundColor: getConfidenceColor(word.confidence), color: "#555", padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
-            {word.text}{' '}
-          </span>
-        ))}
+        {(() => {
+          let lastSpeaker: number | undefined = undefined;
+          return finalWords.map((word: WordConfidence, index: number) => {
+            const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker;
+            lastSpeaker = word.speaker;
+            return (
+              <span key={`final-${index}`}>
+                {showSpeakerLabel && <strong style={{ display: 'block', marginTop: index > 0 ? '5px' : '0' }}>Speaker {word.speaker}:</strong>}
+                <span style={{ backgroundColor: getConfidenceColor(word.confidence), padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
+                  {word.text}{' '}
+                </span>
+              </span>
+            );
+          });
+        })()}
+        {(() => {
+          let lastSpeaker: number | undefined = undefined;
+          return interimWords.map((word: WordConfidence, index: number) => {
+            const showSpeakerLabel = enableDiarization && word.speaker !== undefined && word.speaker !== lastSpeaker;
+            lastSpeaker = word.speaker;
+            return (
+              <span key={`interim-${index}`}>
+                {showSpeakerLabel && <strong style={{ display: 'block', marginTop: index > 0 ? '5px' : '0', color: "#777" }}>Speaker {word.speaker}:</strong>}
+                <span style={{ backgroundColor: getConfidenceColor(word.confidence), color: "#555", padding: "1px 2px", margin: "0 1px", borderRadius: "3px" }}>
+                  {word.text}{' '}
+                </span>
+              </span>
+            );
+          });
+        })()}
       </div>
     </div>
   );
