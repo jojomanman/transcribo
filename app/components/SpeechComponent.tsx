@@ -53,7 +53,7 @@ const SpeechComponent: FC = () => {
 
   // Define models and their supported languages
   const models = [
-    { name: "Nova-3", value: "nova-3", languages: [
+    { name: "Nova-3", value: "nova-3", languages: [ // Languages supported by Nova-3, 'multi' covers non-English
       { name: "English", value: "en" },
       { name: "Spanish", value: "es" },
       { name: "French", value: "fr" },
@@ -63,9 +63,9 @@ const SpeechComponent: FC = () => {
       { name: "Dutch", value: "nl" },
       { name: "Hindi", value: "hi" },
       { name: "Japanese", value: "ja" },
-      { name: "Korean", value: "ko" },
+      // { name: "Korean", value: "ko" }, // Not listed in the 'multi' for Nova-3 from user doc
       { name: "Russian", value: "ru" },
-      { name: "Chinese", value: "zh" },
+      // { name: "Chinese", value: "zh" }, // Not listed in the 'multi' for Nova-3 from user doc
     ]},
     { name: "Nova-2", value: "nova-2", languages: [
       { name: "Bulgarian", value: "bg" },
@@ -223,15 +223,35 @@ const SpeechComponent: FC = () => {
     console.log("Deepgram client created. Establishing live connection...");
 
     // Define Deepgram connection options (aligned with the original, more complex app)
-    const liveConnectionOptions: any = { // Use 'any' for options to dynamically add filler_words
+    const liveConnectionOptions: any = {
       model: selectedModel,
-      language: selectedLanguage,
       interim_results: true,
       smart_format: true,
       utterance_end_ms: 3000,
     };
 
-    if (enableFillerWords && selectedLanguage === "en") {
+    // Set language parameter based on model and selected language
+    if (selectedModel === "nova-3") {
+      if (selectedLanguage === "en") {
+        liveConnectionOptions.language = "en";
+      } else {
+        // For Nova-3 non-English, use 'multi' if the language is in its 'multi' supported list
+        const nova3MultiLanguages = ["es", "fr", "de", "it", "pt", "nl", "hi", "ja", "ru"];
+        if (nova3MultiLanguages.includes(selectedLanguage)) {
+          liveConnectionOptions.language = "multi";
+        } else {
+          // Fallback or error if a language not supported by Nova-3 'multi' is selected
+          // For now, we'll let it pass selectedLanguage, which might error out,
+          // or one could add specific error handling here.
+          liveConnectionOptions.language = selectedLanguage;
+          console.warn(`Selected language ${selectedLanguage} may not be optimally supported by Nova-3's 'multi' mode or direct code.`);
+        }
+      }
+    } else { // For Nova-2 or other models
+      liveConnectionOptions.language = selectedLanguage;
+    }
+
+    if (enableFillerWords && selectedLanguage === "en") { // Filler words only for English
       liveConnectionOptions.filler_words = true;
     }
     if (enableDiarization) {
