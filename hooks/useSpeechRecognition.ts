@@ -265,8 +265,6 @@ export function useSpeechRecognition() {
       connectionRef.current.finish();
       // State updates (isListening=false, etc.) are handled by the 'Close' event
     } else {
-      setFinalWords([]); 
-      setInterimWords([]);
       const cleanup = await connectToDeepgram();
       // Store cleanup function if needed, though connectToDeepgram returns one for its own internal useEffect-like cleanup
     }
