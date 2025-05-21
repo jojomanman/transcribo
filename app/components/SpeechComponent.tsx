@@ -162,7 +162,7 @@ const SpeechComponent: FC<SpeechComponentProps> = ({ isDesktopView = false }) =>
       )}
 
       {/* Wrapper for transcript area to make it grow */}
-      <div className={` ${isDesktopView ? '' : 'flex-grow overflow-hidden'}`}>
+      <div className={` ${isDesktopView ? '' : 'flex-grow overflow-hidden pb-16'}`}>
         {renderTranscript()}
       </div>
 

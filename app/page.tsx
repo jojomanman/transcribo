@@ -28,7 +28,7 @@ export default function HomePage() {
         <ThemeToggle />
       </header>
 
-      <section className="w-full max-w-2xl flex-grow flex flex-col items-center pb-16 md:pb-0"> {/* Added padding for fixed mobile footer */}
+      <section className="w-full max-w-2xl flex-grow flex flex-col items-center"> {/* Added padding for fixed mobile footer */}
         <SpeechComponent />
       </section>
 
