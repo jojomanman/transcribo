@@ -10,6 +10,12 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
     *   **Languages:** Includes English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian, Dutch for Nova-3 (using `multi` for non-English). Extensive language list for Nova-2.
     *   **Filler Words:** Option for English with Nova-3 and Nova-2.
 *   Toggle for **Speaker Diarization** (all languages).
+*   **Copy to Clipboard:** Easily copy the final transcript text using a dedicated button.
+*   **AI Text Fix (Gemini 1.5 Flash):**
+    *   Correct grammar, clarity, and tone of the final transcript using AI.
+    *   Users can provide a custom prompt for the AI, with a helpful default provided.
+    *   Changes made by the AI in the fixed transcript are highlighted for easy review.
+    *   Securely uses the Gemini API key, which is stored as an environment variable and accessed via a server-side API route.
 *   Visual feedback for **word-level confidence scores** (background color).
 *   Client-side fetching of the Deepgram API key via a simple server-side API route.
 *   Basic UI to start/stop listening and configure options.
@@ -41,9 +47,10 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 
 3.  **Set up your Deepgram API Key:**
     *   Copy the [`.env.local.example`](c:\Users\jonas\Desktop\minimal-speech-to-text\.env.local.example:1) file to a new file named `.env.local` in the project root.
-    *   Open `.env.local` and replace `YOUR_DEEPGRAM_API_KEY` with your actual Deepgram API key.
+    *   Open `.env.local` and replace `YOUR_DEEPGRAM_API_KEY` with your actual Deepgram API key. You will also need to add your `GEMINI_API_KEY`.
     ```
     DEEPGRAM_API_KEY=YOUR_DEEPGRAM_API_KEY
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
     ```
 
 4.  **Run the development server:**
@@ -56,12 +63,10 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 
 *   **API Key Management (Secure Approach):**
     *   The main `DEEPGRAM_API_KEY` (your powerful, primary key) is stored as an environment variable on the server (e.g., in Vercel settings or your local `.env.local` file). **This main key is never sent to the client.**
-    *   The client-side `SpeechComponent.tsx` calls the `/api/deepgram-key` API route.
-    *   This server-side API route ([`app/api/deepgram-key/route.ts`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\api\deepgram-key\route.ts:1)) uses the main `DEEPGRAM_API_KEY` to initialize a Deepgram SDK client *on the server*.
-    *   It then uses this server-side client to call Deepgram's API (`deepgram.keys.create()`) to generate a **new, short-lived, temporary API key**. This temporary key has a limited Time-To-Live (TTL, e.g., 10 minutes) and is scoped with general "member" permissions suitable for transcription.
-    *   Only this **temporary key** is sent back to the client. The client uses this temporary key to connect to Deepgram for the transcription session.
-    *   This approach significantly enhances security by preventing your main API key from ever being exposed in the browser.
-    *   **Never commit your actual `.env.local` file or main API key directly into your repository.** The [`.gitignore`](c:\Users\jonas\Desktop\minimal-speech-to-text\.gitignore:1) file is configured to prevent this.
+    *   The client-side application calls API routes like `/api/deepgram-key` and `/api/gemini-key`.
+    *   These server-side API routes (e.g., [`app/api/deepgram-key/route.ts`](c:\Users\jonas\Desktop\minimal-speech-to-text\app\api\deepgram-key\route.ts:1)) use the main API keys (stored as environment variables) to perform their tasks. For Deepgram, it generates a short-lived temporary key for the client. For Gemini, the server-side route fetches the key to be used by the AI text fix service, which is also server-side.
+    *   This approach significantly enhances security by preventing your main API keys from ever being exposed in the browser.
+    *   **Never commit your actual `.env.local` file or main API keys directly into your repository.** The [`.gitignore`](c:\Users\jonas\Desktop\minimal-speech-to-text\.gitignore:1) file is configured to prevent this.
 *   **Microphone Permissions:**
     *   The application requests microphone access from the user via the browser. Ensure permissions are granted.
     *   Error handling for permission denial is basic (an `alert` and console error).
@@ -92,7 +97,7 @@ A minimal implementation of live speech-to-text functionality using Next.js, Typ
 1.  Push your code to a GitHub repository.
 2.  Import the project into Vercel from your GitHub repository.
 3.  Vercel should automatically detect it as a Next.js project.
-4.  **Crucially, set the `DEEPGRAM_API_KEY` as an environment variable in your Vercel project settings.**
+4.  **Crucially, set both `DEEPGRAM_API_KEY` and `GEMINI_API_KEY` as environment variables in your Vercel project settings.**
 5.  Deploy. Vercel will provide a public URL for your application.
 6.  Test on a device with a microphone (e.g., your mobile phone).
 

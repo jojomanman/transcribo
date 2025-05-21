@@ -7,6 +7,7 @@ import {
   DeepgramError,
   LiveMetadataEvent,
 } from "@deepgram/sdk";
+import { fetchFixedTranscript } from "@/lib/gemini"; // Import Gemini service
 
 // Interfaces (can be moved to a types file later if they grow)
 interface DeepgramWordType {
@@ -87,6 +88,14 @@ export function useSpeechRecognition() {
   const [selectedOptionKey, setSelectedOptionKey] = useState<string>(transcriptionOptions[0].key);
   const [enableDiarization, setEnableDiarization] = useState<boolean>(false);
   const [userMessage, setUserMessage] = useState<UserMessageType | null>(null);
+  const [copyStatusMessage, setCopyStatusMessage] = useState<string | null>(null);
+
+  // States for AI Text Fix
+  const [aiPrompt, setAiPrompt] = useState("Fix grammar and clarity, ensure a professional tone.");
+  const [fixedTranscript, setFixedTranscript] = useState("");
+  const [isFixingText, setIsFixingText] = useState(false);
+  const [aiFixError, setAiFixError] = useState<string | null>(null);
+  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
 
   const connectionRef = useRef<LiveClient | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -95,25 +104,47 @@ export function useSpeechRecognition() {
 
   // Fetch API Key
   useEffect(() => {
+    // Fetch Deepgram API Key
     fetch("/api/deepgram-key")
       .then((res) => res.json())
       .then((data) => {
         if (data.key) {
           setApiKey(data.key);
           setApiKeyStatus('loaded');
-          setUserMessage({ type: 'success', text: 'API Key loaded.' });
+          // Set a general success message, or let components handle it.
+          // setUserMessage({ type: 'success', text: 'Deepgram API Key loaded.' });
         } else {
-          console.error("Failed to get API key:", data.error);
-          setApiKeyStatus('not_configured');
-          setUserMessage({ type: 'error', text: 'Error: DEEPGRAM_API_KEY not configured.' });
+          console.error("Failed to get Deepgram API key:", data.error);
+          setApiKeyStatus('not_configured'); // Specific to Deepgram
+          setUserMessage({ type: 'error', text: 'Error: DEEPGRAM_API_KEY not configured. Transcription may fail.' });
         }
       })
       .catch(err => {
-        console.error("Error fetching API key:", err);
-        setApiKeyStatus('error');
-        setUserMessage({ type: 'error', text: 'Error fetching API key. Check console.' });
+        console.error("Error fetching Deepgram API key:", err);
+        setApiKeyStatus('error'); // Specific to Deepgram
+        setUserMessage({ type: 'error', text: 'Error fetching Deepgram API key. Check console.' });
       });
-  }, []);
+
+    // Fetch Gemini API Key
+    fetch('/api/gemini-key')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.apiKey) {
+          setGeminiApiKey(data.apiKey);
+          // Clear any previous Gemini key errors if present
+          if (aiFixError && (aiFixError.includes("Gemini API key not found") || aiFixError.includes("Failed to load AI features"))) {
+            setAiFixError(null);
+          }
+        } else {
+          console.error("Failed to get Gemini API key:", data.error);
+          setAiFixError(data.error || "Gemini API key not found. AI features may be unavailable.");
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching Gemini API key:", err);
+        setAiFixError(`Failed to load AI features: ${(err as Error).message}`);
+      });
+  }, []); // Removed aiFixError from dependency array to avoid re-fetching on error set
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -282,6 +313,54 @@ export function useSpeechRecognition() {
     };
   }, []);
 
+  const handleCopyToClipboard = useCallback(async () => {
+    if (finalWords.length === 0) {
+      setCopyStatusMessage("Nothing to copy.");
+      setTimeout(() => setCopyStatusMessage(null), 3000);
+      return;
+    }
+
+    const transcriptText = finalWords.map(word => word.text).join(" ");
+    try {
+      await navigator.clipboard.writeText(transcriptText);
+      setCopyStatusMessage("Transcript copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+      setCopyStatusMessage("Failed to copy transcript.");
+    } finally {
+      setTimeout(() => setCopyStatusMessage(null), 3000);
+    }
+  }, [finalWords]);
+
+  const handleFixTranscript = useCallback(async () => {
+    if (isFixingText || !geminiApiKey || finalWords.length === 0) {
+      if (!geminiApiKey && !aiFixError) { // Only set error if not already set from key fetching
+        setAiFixError("AI features unavailable: API key not loaded.");
+      }
+      return;
+    }
+
+    setIsFixingText(true);
+    setAiFixError(null);
+    setFixedTranscript("");
+
+    const originalTranscript = finalWords.map(word => word.text).join(" ");
+
+    try {
+      const result = await fetchFixedTranscript(originalTranscript, aiPrompt, geminiApiKey);
+      if (result) {
+        setFixedTranscript(result);
+      } else {
+        setAiFixError("AI returned an empty response.");
+      }
+    } catch (error) {
+      console.error("Error fixing transcript with AI:", error);
+      setAiFixError(`Failed to fix transcript: ${(error as Error).message}`);
+    } finally {
+      setIsFixingText(false);
+    }
+  }, [finalWords, aiPrompt, geminiApiKey, isFixingText, aiFixError]); // Added aiFixError
+
   return {
     apiKey,
     apiKeyStatus,
@@ -297,5 +376,14 @@ export function useSpeechRecognition() {
     toggleListening,
     transcriptionOptions,
     transcriptContainerRef, // Pass the ref for the transcript display area
+    handleCopyToClipboard,
+    copyStatusMessage,
+    // AI Text Fix related exports
+    aiPrompt,
+    setAiPrompt,
+    fixedTranscript,
+    isFixingText,
+    aiFixError,
+    handleFixTranscript,
   };
 }
